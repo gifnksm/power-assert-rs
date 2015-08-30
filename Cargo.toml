@@ -1,0 +1,17 @@
+[package]
+name = "power-assert"
+version = "0.1.0"
+authors = ["gifnksm <makoto.nksm+github@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/gifnksm/power-assert-rs"
+description = "Power Assert in Rust. Provides better assertion message."
+
+[lib]
+name = "power_assert"
+path = "src/lib.rs"
+plugin = true
+
+[features]
+default = []
+replace-builtin = []
