@@ -23,12 +23,13 @@ script:
       travis-cargo build &&
       travis-cargo test &&
       travis-cargo bench &&
-      travis-cargo --only stable doc
+      travis-cargo --only "${DOC_UPLOAD_VERSION}" doc
 
 after_success:
-  - travis-cargo --only stable doc-upload
+  - travis-cargo --only "${DOC_UPLOAD_VERSION}" doc-upload
   - travis-cargo coveralls --no-sudo
 
 env:
   global:
     - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+    - DOC_UPLOAD_VERSION=nightly
