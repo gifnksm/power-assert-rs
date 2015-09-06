@@ -11,7 +11,3 @@ description = "Power Assert in Rust. Provides better assertion message."
 name = "power_assert"
 path = "src/lib.rs"
 plugin = true
-
-[features]
-default = []
-replace-builtin = []

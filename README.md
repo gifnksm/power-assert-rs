@@ -34,10 +34,11 @@ and add this to your `lib.rs` or `main.rs`:
 
 Now, you can use `power_assert!()` and `power_assert_eq!()`.
 
-If you want to replace builtin `assert!()` and `assert_eq!()`, add this to your `Cargo.toml`:
+If you want to override builtin `assert!()` and `assert_eq!()`, change your `lib.rs` or `main.rs` as follows.
 
-```toml
-power-assert = { version = "*", features = ["replace-builtin"]}
+```rust
+#![feature(plugin)]
+#![plugin(power_assert(override_builtins))]
 ```
 
 # Known problems

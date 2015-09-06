@@ -16,7 +16,7 @@ extern crate rustc;
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use syntax::ast::{Expr, Ident, TokenTree, Stmt};
+use syntax::ast::{Expr, Ident, TokenTree, Stmt, MetaWord};
 use syntax::codemap::{BytePos, Span};
 use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
 use syntax::ext::quote::rt::ToTokens;
@@ -376,10 +376,31 @@ fn expand_assert_eq(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    if cfg!(feature = "replace-builtin") {
+    let mut override_builtins = false;
+
+    for arg in reg.args() {
+        match arg.node {
+            MetaWord(ref ns) => {
+                match &**ns {
+                    "override_builtins" => {
+                        override_builtins = true;
+                    }
+                    _ => {
+                        reg.sess.span_err(arg.span, "invalid argument");
+                    }
+                }
+            }
+            _ => {
+                reg.sess.span_err(arg.span, "invalid argument");
+            }
+        }
+    }
+
+    if override_builtins {
         reg.register_macro("assert", expand_assert);
         reg.register_macro("assert_eq", expand_assert_eq);
     }
+
     reg.register_macro("power_assert", expand_assert);
     reg.register_macro("power_assert_eq", expand_assert_eq);
 }

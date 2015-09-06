@@ -24,6 +24,5 @@ struct Bar {
 fn main() {
     let bar = Bar { val: 3, foo: Foo { val: 2 }};
     power_assert!(bar.val == bar.foo.val);
-    // power_assert_eq!(bar.val, bar.foo.val);
-    // power_assert!(get_bar().foo.val == 1);
+    power_assert_eq!(bar.val, bar.foo.val);
 }
