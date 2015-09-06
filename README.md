@@ -29,7 +29,7 @@ and add this to your `lib.rs` or `main.rs`:
 
 ```rust
 #![feature(plugin)]
-#![plugin(power-assert)]
+#![plugin(power_assert)]
 ```
 
 Now, you can use `power_assert!()` and `power_assert_eq!()`.
