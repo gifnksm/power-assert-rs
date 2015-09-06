@@ -17,7 +17,7 @@ extern crate rustc;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use syntax::ast::{Expr, Ident, TokenTree, Stmt, MetaWord};
-use syntax::codemap::{BytePos, Span};
+use syntax::codemap::{BytePos, CodeMap, Span};
 use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
 use syntax::ext::quote::rt::ToTokens;
 use syntax::fold::{self, Folder};
@@ -54,19 +54,27 @@ fn register_pos(map: &mut HashMap<BytePos, i32>, org_pos: BytePos, pp_pos: i32) 
     }
 }
 
+fn register_pos_rec(map: &mut HashMap<BytePos, i32>, codemap: &CodeMap, tt: &TokenTree, ptt: &TokenTree) {
+    let line = codemap.span_to_lines(ptt.get_span()).unwrap();
+    register_pos(map, tt.get_span().lo, line.lines[0].start_col.0 as i32);
+    register_pos(map, tt.get_span().hi, line.lines[0].end_col.0 as i32);
+    assert_eq!(tt.len(), ptt.len());
+    for i in 0..tt.len() {
+        register_pos_rec(map, codemap, &tt.get_tt(i), &ptt.get_tt(i));
+    }
+}
+
 fn create_pos_map(
     cx: &mut ExtCtxt, ppstr: String, original_tokens: &[TokenTree])
     -> HashMap<BytePos, i32>
 {
     let codemap = cx.parse_sess().codemap();
     let filemap = codemap.new_filemap("".to_string(), ppstr);
-    let tokens = parse::filemap_to_tts(cx.parse_sess(), filemap);
+    let ptokens = parse::filemap_to_tts(cx.parse_sess(), filemap);
 
     let mut map = HashMap::new();
-    for (ptt, tt) in tokens.iter().zip(original_tokens) {
-        let line = codemap.span_to_lines(ptt.get_span()).unwrap();
-        register_pos(&mut map, tt.get_span().lo, line.lines[0].start_col.0 as i32);
-        register_pos(&mut map, tt.get_span().hi, line.lines[0].end_col.0 as i32);
+    for (tt, ptt) in original_tokens.iter().zip(ptokens) {
+        register_pos_rec(&mut map, &codemap, &tt, &ptt);
     }
     map
 }
@@ -84,7 +92,22 @@ impl<'cx> Folder for AssertFolder<'cx> {
             match expr.node {
                 // ExprBox
                 // ExprVec
-                ExprCall(_, _) => { P(expr) }
+                ExprCall(ref i, ref args) => {
+                    let col = self.pos_map.get(&i.span.lo).unwrap();
+                    let args = args.iter()
+                        .map(|expr| self.fold_expr(expr.clone()))
+                        .collect::<Vec<_>>();
+                    let ident = self.ident;
+                    let mut call_expr = expr.clone();
+                    call_expr.node = ExprCall(i.clone(), args);
+
+                    let call_expr = P(call_expr);
+                    quote_expr!(self.cx, {
+                        let expr = $call_expr;
+                        $ident.push(($col, format!("{:?}", expr)));
+                        expr
+                    })
+                }
                 ExprMethodCall(i, _, _) => {
                     // TODO: fix column
                     let col = self.pos_map.get(&i.span.lo).unwrap();

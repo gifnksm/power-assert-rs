@@ -40,12 +40,3 @@ If you want to override builtin `assert!()` and `assert_eq!()`, change your `lib
 #![feature(plugin)]
 #![plugin(power_assert(override_builtins))]
 ```
-
-# Known problems
-
-The following assersions fail to compile with `power-assert`.
-
-```rust
-fn foo() -> i32 { 1 }
-power_assert!(foo() == 1);
-```
