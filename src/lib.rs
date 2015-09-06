@@ -265,6 +265,34 @@ fn expr_prelude(cx: &ExtCtxt) -> Vec<P<Stmt>> {
              }
              let _ = write!(writer, "{}", s);
              *cur += width(s);
+         }).unwrap(),
+         quote_stmt!(cx, fn inspect(mut vals: Vec<(i32, String)>, offset: i32, repr: &str) {
+             vals.sort();
+
+             let mut err = io::stderr();
+             let _ = writeln!(err, "{}", repr);
+             {
+                 let mut cur = 0;
+                 for &(c, _) in &vals {
+                     align(&mut err, &mut cur, offset + c, "|");
+                 }
+                 let _ = writeln!(err, "");
+             }
+             while !vals.is_empty() {
+                 let mut cur = 0;
+                 let mut i = 0;
+                 while i < vals.len() {
+                     if i == vals.len() - 1 ||
+                         vals[i].0 + width(&vals[i].1) < vals[i + 1].0 {
+                             align(&mut err, &mut cur, offset + vals[i].0, &vals[i].1);
+                             let _ = vals.remove(i);
+                         } else {
+                             align(&mut err, &mut cur, offset + vals[i].0, "|");
+                             i += 1;
+                         }
+                 }
+                 let _ = writeln!(err, "");
+             }
          }).unwrap()]
 }
 
@@ -272,34 +300,8 @@ fn expr_inspect(cx: &ExtCtxt, vals: Ident, left: &str, repr: &str, right: &str)
                 -> P<Expr>
 {
     let offset = left.len() as i32;
-    quote_expr!(cx, {
-        $vals.sort();
-
-        let mut err = io::stderr();
-        let _ = writeln!(err, "{}{}{}", $left, $repr, $right);
-        {
-            let mut cur = 0;
-            for &(c, _) in &$vals {
-                align(&mut err, &mut cur, $offset + c, "|");
-            }
-            let _ = writeln!(err, "");
-        }
-        while !$vals.is_empty() {
-            let mut cur = 0;
-            let mut i = 0;
-            while i < $vals.len() {
-                if i == $vals.len() - 1 ||
-                    $vals[i].0 + width(&$vals[i].1) < $vals[i + 1].0 {
-                        align(&mut err, &mut cur, $offset + $vals[i].0, &$vals[i].1);
-                        let _ = $vals.remove(i);
-                    } else {
-                        align(&mut err, &mut cur, $offset + $vals[i].0, "|");
-                        i += 1;
-                    }
-            }
-            let _ = writeln!(err, "");
-        }
-    })
+    let repr = format!("{}{}{}", left, repr, right);
+    quote_expr!(cx, inspect($vals, $offset, $repr))
 }
 
 fn expr_convert(cx: &mut ExtCtxt, expr: P<Expr>, ident: Ident, tts: &[TokenTree]) -> P<Expr> {
@@ -341,9 +343,9 @@ fn expand_assert(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
         let mut $ident = vec![];
         let cond = $converted_expr;
         if !cond {
-            $prelude
-            $inspect
-            $panic_expr
+            $prelude;
+            $inspect;
+            $panic_expr;
         }
     });
 
@@ -380,11 +382,10 @@ fn expand_assert_eq(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
         match (&$converted_lhs, &$converted_rhs) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
-                    $prelude
-                    let mut err = io::stderr();
-                    let _ = writeln!(err, "power_assert_eq!({}, {})", $pplhs_str, $pprhs_str);
-                    $lhs_inspect
-                    $rhs_inspect
+                    $prelude;
+                    let _ = writeln!(io::stderr(), "power_assert_eq!({}, {})", $pplhs_str, $pprhs_str);
+                    $lhs_inspect;
+                    $rhs_inspect;
                     panic!("assertion failed: `(left == right)` \
                             (left: `{:?}`, right: `{:?}`)", *left_val, *right_val);
                 }
