@@ -43,6 +43,13 @@ macro_rules! panictry {
     })
 }
 
+fn filter_tts_by_span(span: Span, tts: &[TokenTree]) -> Vec<TokenTree> {
+    tts.iter()
+        .filter(|tt| span.lo <= tt.get_span().lo && tt.get_span().hi <= span.hi)
+        .cloned()
+        .collect()
+}
+
 fn register_pos(map: &mut HashMap<BytePos, i32>, org_pos: BytePos, pp_pos: i32) {
     match map.entry(org_pos) {
         Entry::Occupied(e) => {
@@ -317,26 +324,28 @@ fn expr_convert(cx: &mut ExtCtxt, expr: P<Expr>, ident: Ident, tts: &[TokenTree]
     folder.fold_expr(expr)
 }
 
-fn expand_assert(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
+fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
                  -> Box<MacResult + 'static> {
     let mut parser = cx.new_parser_from_tts(args);
 
     let cond_expr = parser.parse_expr();
     let msg_tts = if panictry!(parser.eat(&token::Token::Comma)) {
-        Some(args[parser.tokens_consumed..].to_vec())
+        let mut span = sp.clone();
+        span.lo = parser.span.lo;
+        Some(filter_tts_by_span(span, args))
     } else {
         None
     };
-    let ppexpr_str = pprust::expr_to_string(&cond_expr);
+    let ppcond_str = pprust::expr_to_string(&cond_expr);
 
     let prelude = expr_prelude(cx);
     let ident = token::gensym_ident("vals");
     let converted_expr = expr_convert(cx, cond_expr, ident, args);
-    let inspect = expr_inspect(cx, ident, "power_assert!(", &ppexpr_str, ")");
+    let inspect = expr_inspect(cx, ident, "power_assert!(", &ppcond_str, ")");
     let panic_expr = if let Some(tts) = msg_tts {
         quote_expr!(cx, panic!($tts))
     } else {
-        quote_expr!(cx, panic!(concat!("assertion failed: ", $ppexpr_str)))
+        quote_expr!(cx, panic!(concat!("assertion failed: ", $ppcond_str)))
     };
 
     let expr = quote_expr!(cx, {
@@ -358,21 +367,19 @@ fn expand_assert_eq(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
                     -> Box<MacResult + 'static> {
     let mut parser = cx.new_parser_from_tts(args);
     let lhs = parser.parse_expr();
-    let lhs_tts = &args[..parser.tokens_consumed];
+    let lhs_tts = filter_tts_by_span(lhs.span, args);
     panictry!(parser.expect(&token::Token::Comma));
-
-    let idx = parser.tokens_consumed;
     let rhs = parser.parse_expr();
-    let rhs_tts = &args[idx..];
+    let rhs_tts = filter_tts_by_span(rhs.span, args);
 
     let pplhs_str = pprust::expr_to_string(&lhs);
     let pprhs_str = pprust::expr_to_string(&rhs);
 
     let prelude = expr_prelude(cx);
     let lhs_ident = token::gensym_ident("lhs_vals");
-    let converted_lhs = expr_convert(cx, lhs, lhs_ident, lhs_tts);
+    let converted_lhs = expr_convert(cx, lhs, lhs_ident, &lhs_tts);
     let rhs_ident = token::gensym_ident("rhs_vals");
-    let converted_rhs = expr_convert(cx, rhs, rhs_ident, rhs_tts);
+    let converted_rhs = expr_convert(cx, rhs, rhs_ident, &rhs_tts);
     let lhs_inspect = expr_inspect(cx, lhs_ident, "left: ", &pplhs_str, "");
     let rhs_inspect = expr_inspect(cx, rhs_ident, "right: ", &pprhs_str, "");
 
