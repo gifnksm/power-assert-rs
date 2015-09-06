@@ -1,4 +1,9 @@
-# power-assert-rs [![Build Status](https://travis-ci.org/gifnksm/power-assert-rs.svg)](https://travis-ci.org/gifnksm/power-assert-rs)
+# power-assert-rs
+
+[![Build Status](https://travis-ci.org/gifnksm/power-assert-rs.svg)](https://travis-ci.org/gifnksm/power-assert-rs)
+[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![crates.io](http://meritbadge.herokuapp.com/power-assert)](https://crates.io/crates/power-assert)
+
 Power Assert in Rust. Provides better assertion message like this:
 
 ```
