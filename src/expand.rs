@@ -33,10 +33,10 @@ fn filter_tts_by_span(span: Span, tts: &[TokenTree]) -> Vec<TokenTree> {
 }
 
 fn expr_prelude(cx: &ExtCtxt) -> Vec<P<Stmt>> {
-    let use_stmt = quote_stmt!(cx, use std::io::{self, Write};);
+    let use_stmt = quote_stmt!(cx, use std::io::Write;);
     let fn_stmt = quote_stmt!(
         cx,
-        fn inspect(mut vals: Vec<(i32, String)>, offset: i32, repr: &str) {
+        fn inspect<T: Write>(writer: &mut T, mut vals: Vec<(i32, String)>, offset: i32, repr: &str) {
             fn width(s: &str) -> i32 { s.len() as i32 }
             fn align<T: Write>(writer: &mut T, cur: &mut i32, col: i32, s: &str) {
                 while *cur < col {
@@ -49,14 +49,13 @@ fn expr_prelude(cx: &ExtCtxt) -> Vec<P<Stmt>> {
 
             vals.sort();
 
-            let mut err = io::stderr();
-            let _ = writeln!(err, "{}", repr);
+            let _ = writeln!(writer, "{}", repr);
             {
                 let mut cur = 0;
                 for &(c, _) in &vals {
-                    align(&mut err, &mut cur, offset + c, "|");
+                    align(writer, &mut cur, offset + c, "|");
                 }
-                let _ = writeln!(err, "");
+                let _ = writeln!(writer, "");
             }
             while !vals.is_empty() {
                 let mut cur = 0;
@@ -64,18 +63,19 @@ fn expr_prelude(cx: &ExtCtxt) -> Vec<P<Stmt>> {
                 while i < vals.len() {
                     if i == vals.len() - 1 ||
                         vals[i].0 + width(&vals[i].1) < vals[i + 1].0 {
-                            align(&mut err, &mut cur, offset + vals[i].0, &vals[i].1);
+                            align(writer, &mut cur, offset + vals[i].0, &vals[i].1);
                             let _ = vals.remove(i);
                         } else {
-                            align(&mut err, &mut cur, offset + vals[i].0, "|");
+                            align(writer, &mut cur, offset + vals[i].0, "|");
                             i += 1;
                         }
                 }
-                let _ = writeln!(err, "");
+                let _ = writeln!(writer, "");
             }
         });
+    let write_stmt = quote_stmt!(cx, let mut write_buf = vec![];);
 
-    vec![use_stmt.unwrap(), fn_stmt.unwrap()]
+    vec![use_stmt.unwrap(), fn_stmt.unwrap(), write_stmt.unwrap()]
 }
 
 struct ExprGen {
@@ -113,7 +113,7 @@ impl ExprGen {
         let offset = left.len() as i32;
         let repr = format!("{}{}{}", left, self.ppstr, right);
         let ident = self.ident;
-        quote_expr!(cx, inspect($ident, $offset, $repr))
+        quote_expr!(cx, inspect(&mut write_buf, $ident, $offset, $repr))
     }
 }
 
@@ -138,11 +138,11 @@ pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     let inspect = gen.inspect_expr(cx, "power_assert!(", ")");
     let converted = gen.converted_expr(cx);
 
-    let panic_expr = if let Some(tts) = msg_tts {
-        quote_expr!(cx, panic!($tts))
+    let panic_msg = if let Some(tts) = msg_tts {
+        quote_expr!(cx, format!($tts))
     } else {
         let msg = format!("assertion failed: {}", gen.ppstr());
-        quote_expr!(cx, panic!($msg))
+        quote_expr!(cx, $msg)
     };
 
     let expr = quote_expr!(cx, {
@@ -150,8 +150,9 @@ pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         let cond = $converted;
         if !cond {
             $prelude;
+            let _ = writeln!(&mut write_buf, $panic_msg);
             $inspect;
-            $panic_expr;
+            panic!(String::from_utf8(write_buf).unwrap())
         }
     });
 
@@ -188,11 +189,12 @@ pub fn expand_assert_eq(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
                     $prelude;
-                    let _ = writeln!(io::stderr(), $assert_msg);
+                    let _ = writeln!(&mut write_buf, "assertion failed: `(left == right)` \
+                            (left: `{:?}`, right: `{:?}`)", *left_val, *right_val);
+                    let _ = writeln!(&mut write_buf, $assert_msg);
                     $lhs_inspect;
                     $rhs_inspect;
-                    panic!("assertion failed: `(left == right)` \
-                            (left: `{:?}`, right: `{:?}`)", *left_val, *right_val);
+                    panic!(String::from_utf8(write_buf).unwrap());
                 }
             }
         }
