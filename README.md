@@ -7,9 +7,9 @@
 Power Assert in Rust. Provides better assertion message like this:
 
 ```
-$ cargo run --example test -v
-       Fresh power-assert v0.1.0 (file:///home/nksm/repos/gifnksm/power-assert-rs)
-     Running `target/debug/examples/test`
+$ cargo run --example normal
+     Running `target/debug/examples/normal`
+thread '<main>' panicked at 'assertion failed: bar.val == bar.foo.val
 power_assert!(bar.val == bar.foo.val)
               |   |   |  |   |   |
               |   3   |  |   |   2
@@ -17,8 +17,10 @@ power_assert!(bar.val == bar.foo.val)
               |       |  Bar { val: 3, foo: Foo { val: 2 } }
               |       false
               Bar { val: 3, foo: Foo { val: 2 } }
-thread '<main>' panicked at 'assertion failed: bar.val == bar.foo.val', examples/test.rs:26
-Process didn't exit successfully: `target/debug/examples/test` (exit code: 101)
+', examples/normal.rs:26
+An unknown error occurred
+
+To learn more, run the command again with --verbose.
 ```
 
 # How to use
