@@ -99,9 +99,9 @@ impl<'cx> Folder for AssertFolder<'cx> {
                 // ExprUnary
                 // ExprLit
                 // ExprCast
-                ExprIf(_, _, _) |
-                ExprIfLet(_, _, _, _) |
-                ExprMatch(_, _, _) => {
+                ExprIf(..) |
+                ExprIfLet(..) |
+                ExprMatch(..) => {
                     let col = self.pos_map.get(&expr.span.lo).unwrap();
                     let conv_expr = P(fold::noop_fold_expr(expr, self));
                     let ident = self.ident;
@@ -120,10 +120,10 @@ impl<'cx> Folder for AssertFolder<'cx> {
                 // ExprBlock
                 // ExprAssign
                 // ExprAssignOp
-                ExprField(_, _) => {
+                ExprField(..) => {
                     self.convert_field(P(expr.clone()))
                 }
-                ExprTupField(_, _) => {
+                ExprTupField(..) => {
                     self.convert_field(P(expr.clone()))
                 }
                 ExprIndex(_, ref i) => {
@@ -138,7 +138,7 @@ impl<'cx> Folder for AssertFolder<'cx> {
                     })
                 }
                 // ExprRange
-                ExprPath(_, _) => {
+                ExprPath(..) => {
                     let col = self.pos_map.get(&expr.span.lo).unwrap();
                     let expr = P(expr);
                     let ident = self.ident;
@@ -175,7 +175,7 @@ impl<'cx> AssertFolder<'cx> {
                     exprs.push(cur_expr.clone());
                     e.clone()
                 }
-                ExprPath(_, _) => {
+                ExprPath(..) => {
                     ident = cur_expr.clone();
                     let id = self.ident;
                     let col = self.pos_map.get(&expr.span.lo).unwrap();
