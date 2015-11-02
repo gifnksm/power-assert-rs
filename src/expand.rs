@@ -27,9 +27,9 @@ macro_rules! panictry {
 
 fn filter_tts_by_span(span: Span, tts: &[TokenTree]) -> Vec<TokenTree> {
     tts.iter()
-        .filter(|tt| span.lo <= tt.get_span().lo && tt.get_span().hi <= span.hi)
-        .cloned()
-        .collect()
+       .filter(|tt| span.lo <= tt.get_span().lo && tt.get_span().hi <= span.hi)
+       .cloned()
+       .collect()
 }
 
 fn expr_prelude(cx: &ExtCtxt) -> Vec<P<Stmt>> {
@@ -82,7 +82,7 @@ struct ExprGen {
     ident: Ident,
     tts: Vec<TokenTree>,
     expr: P<Expr>,
-    ppstr: String
+    ppstr: String,
 }
 
 impl ExprGen {
@@ -94,11 +94,13 @@ impl ExprGen {
             ident: token::gensym_ident(ident),
             tts: tts,
             expr: expr,
-            ppstr: ppstr
+            ppstr: ppstr,
         }
     }
 
-    fn ppstr(&self) -> &str { &self.ppstr }
+    fn ppstr(&self) -> &str {
+        &self.ppstr
+    }
 
     fn init_stmt(&self, cx: &mut ExtCtxt, pushed: bool) -> P<Stmt> {
         let ident = self.ident;
@@ -122,8 +124,7 @@ impl ExprGen {
 }
 
 
-pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
-                 -> Box<MacResult + 'static> {
+pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree]) -> Box<MacResult + 'static> {
     let mut parser = cx.new_parser_from_tts(args);
     let cond_expr = parser.parse_expr();
 
@@ -165,8 +166,10 @@ pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     MacEager::expr(expr)
 }
 
-pub fn expand_assert_eq(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
-                    -> Box<MacResult + 'static> {
+pub fn expand_assert_eq(cx: &mut ExtCtxt,
+                        _sp: Span,
+                        args: &[TokenTree])
+                        -> Box<MacResult + 'static> {
     let mut parser = cx.new_parser_from_tts(args);
     let lhs = parser.parse_expr();
     panictry!(parser.expect(&token::Token::Comma));
@@ -183,8 +186,7 @@ pub fn expand_assert_eq(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
     let (rhs_converted, rhs_pushed) = rhs_gen.converted_expr(cx);
     let lhs_init = lhs_gen.init_stmt(cx, lhs_pushed);
     let rhs_init = rhs_gen.init_stmt(cx, rhs_pushed);
-    let assert_msg = format!("power_assert_eq!({}, {})",
-                             lhs_gen.ppstr(), rhs_gen.ppstr());
+    let assert_msg = format!("power_assert_eq!({}, {})", lhs_gen.ppstr(), rhs_gen.ppstr());
 
     let expr = quote_expr!(cx, {
         $lhs_init;
