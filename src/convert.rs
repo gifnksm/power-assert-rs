@@ -48,7 +48,8 @@ fn create_pos_map(
 struct AssertFolder<'cx> {
     cx: &'cx ExtCtxt<'cx>,
     pos_map: &'cx HashMap<BytePos, i32>,
-    ident: Ident
+    ident: Ident,
+    push_count: usize,
 }
 
 impl<'cx> Folder for AssertFolder<'cx> {
@@ -68,6 +69,7 @@ impl<'cx> Folder for AssertFolder<'cx> {
                     call_expr.node = ExprCall(i.clone(), args);
 
                     let call_expr = P(call_expr);
+                    self.push_count += 1;
                     quote_expr!(self.cx, {
                         let expr = $call_expr;
                         $ident.push(($col, format!("{:?}", expr)));
@@ -79,6 +81,7 @@ impl<'cx> Folder for AssertFolder<'cx> {
                     let col = self.pos_map.get(&i.span.lo).unwrap();
                     let conv_expr = P(fold::noop_fold_expr(expr, self));
                     let ident = self.ident;
+                    self.push_count += 1;
                     quote_expr!(self.cx, {
                         let expr = $conv_expr;
                         $ident.push(($col, format!("{:?}", expr)));
@@ -90,6 +93,7 @@ impl<'cx> Folder for AssertFolder<'cx> {
                     let col = self.pos_map.get(&op.span.lo).unwrap();
                     let conv_expr = P(fold::noop_fold_expr(expr, self));
                     let ident = self.ident;
+                    self.push_count += 1;
                     quote_expr!(self.cx, {
                         let expr = $conv_expr;
                         $ident.push(($col, format!("{:?}", expr)));
@@ -105,6 +109,7 @@ impl<'cx> Folder for AssertFolder<'cx> {
                     let col = self.pos_map.get(&expr.span.lo).unwrap();
                     let conv_expr = P(fold::noop_fold_expr(expr, self));
                     let ident = self.ident;
+                    self.push_count += 1;
                     quote_expr!(self.cx, {
                         let expr = $conv_expr;
                         $ident.push(($col, format!("{:?}", expr)));
@@ -131,6 +136,7 @@ impl<'cx> Folder for AssertFolder<'cx> {
                     let col = self.pos_map.get(&i.span.lo).unwrap();
                     let conv_expr = P(fold::noop_fold_expr(expr.clone(), self));
                     let ident = self.ident;
+                    self.push_count += 1;
                     quote_expr!(self.cx, {
                         let expr = $conv_expr;
                         $ident.push(($col, format!("{:?}", expr)));
@@ -142,6 +148,7 @@ impl<'cx> Folder for AssertFolder<'cx> {
                     let col = self.pos_map.get(&expr.span.lo).unwrap();
                     let expr = P(expr);
                     let ident = self.ident;
+                    self.push_count += 1;
                     quote_expr!(self.cx, {
                         $ident.push(($col, format!("{:?}", $expr)));
                         $expr
@@ -179,6 +186,7 @@ impl<'cx> AssertFolder<'cx> {
                     ident = cur_expr.clone();
                     let id = self.ident;
                     let col = self.pos_map.get(&expr.span.lo).unwrap();
+                    self.push_count += 1;
                     prelude = quote_stmt!(self.cx, $id.push(($col, format!("{:?}", $ident))));
                     break;
                 }
@@ -212,6 +220,7 @@ impl<'cx> AssertFolder<'cx> {
         let mut stmts = vec![prelude];
         for (e, col) in exprs {
             let ident = self.ident;
+            self.push_count += 1;
             stmts.push(quote_stmt!(self.cx, $ident.push(($col, format!("{:?}", $e)));));
         }
         quote_expr!(self.cx, {
@@ -221,7 +230,7 @@ impl<'cx> AssertFolder<'cx> {
     }
 }
 
-pub fn convert_expr(cx: &mut ExtCtxt, expr: P<Expr>, ident: Ident, tts: &[TokenTree]) -> P<Expr> {
+pub fn convert_expr(cx: &mut ExtCtxt, expr: P<Expr>, ident: Ident, tts: &[TokenTree]) -> (P<Expr>, bool) {
     // Pretty-printed snippet is used for showing assersion failed message, but
     // its tokens may have different spans from original code snippet's tokens.
     // Power-assert using those spans, so, parse the pretty-printed snippet
@@ -230,6 +239,6 @@ pub fn convert_expr(cx: &mut ExtCtxt, expr: P<Expr>, ident: Ident, tts: &[TokenT
     let pos_map = create_pos_map(cx, ppexpr_str, tts);
 
     // Convert
-    let mut folder = AssertFolder { cx: cx, pos_map: &pos_map, ident: ident };
-    folder.fold_expr(expr)
+    let mut folder = AssertFolder { cx: cx, pos_map: &pos_map, ident: ident, push_count: 0 };
+    (folder.fold_expr(expr), folder.push_count > 0)
 }

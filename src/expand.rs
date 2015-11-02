@@ -100,12 +100,16 @@ impl ExprGen {
 
     fn ppstr(&self) -> &str { &self.ppstr }
 
-    fn init_stmt(&self, cx: &mut ExtCtxt) -> P<Stmt> {
+    fn init_stmt(&self, cx: &mut ExtCtxt, pushed: bool) -> P<Stmt> {
         let ident = self.ident;
-        quote_stmt!(cx, let mut $ident = vec![];).unwrap()
+        if pushed {
+            quote_stmt!(cx, let mut $ident = vec![];).unwrap()
+        } else {
+            quote_stmt!(cx, let $ident = vec![];).unwrap()
+        }
     }
 
-    fn converted_expr(&self, cx: &mut ExtCtxt) -> P<Expr> {
+    fn converted_expr(&self, cx: &mut ExtCtxt) -> (P<Expr>, bool) {
         convert::convert_expr(cx, self.expr.clone(), self.ident, &self.tts)
     }
 
@@ -134,9 +138,9 @@ pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     let prelude = expr_prelude(cx);
 
     let gen = ExprGen::new("vals", cond_expr, args);
-    let init = gen.init_stmt(cx);
     let inspect = gen.inspect_expr(cx, "power_assert!(", ")");
-    let converted = gen.converted_expr(cx);
+    let (converted, pushed) = gen.converted_expr(cx);
+    let init = gen.init_stmt(cx, pushed);
 
     let panic_msg = if let Some(tts) = msg_tts {
         quote_expr!(cx, format!($tts))
@@ -173,12 +177,12 @@ pub fn expand_assert_eq(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
 
     let prelude = expr_prelude(cx);
 
-    let lhs_init = lhs_gen.init_stmt(cx);
-    let rhs_init = rhs_gen.init_stmt(cx);
     let lhs_inspect = lhs_gen.inspect_expr(cx, "left: ", "");
     let rhs_inspect = rhs_gen.inspect_expr(cx, "right: ", "");
-    let lhs_converted = lhs_gen.converted_expr(cx);
-    let rhs_converted = rhs_gen.converted_expr(cx);
+    let (lhs_converted, lhs_pushed) = lhs_gen.converted_expr(cx);
+    let (rhs_converted, rhs_pushed) = rhs_gen.converted_expr(cx);
+    let lhs_init = lhs_gen.init_stmt(cx, lhs_pushed);
+    let rhs_init = rhs_gen.init_stmt(cx, rhs_pushed);
     let assert_msg = format!("power_assert_eq!({}, {})",
                              lhs_gen.ppstr(), rhs_gen.ppstr());
 
