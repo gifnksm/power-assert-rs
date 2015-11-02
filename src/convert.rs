@@ -23,7 +23,7 @@ fn register_pos(map: &mut HashMap<BytePos, i32>, org_pos: BytePos, pp_pos: i32) 
 fn register_pos_rec(map: &mut HashMap<BytePos, i32>, codemap: &CodeMap, tt: &TokenTree, ptt: &TokenTree) {
     let line = codemap.span_to_lines(ptt.get_span()).unwrap();
     register_pos(map, tt.get_span().lo, line.lines[0].start_col.0 as i32);
-    register_pos(map, tt.get_span().hi, line.lines[0].end_col.0 as i32);
+
     assert_eq!(tt.len(), ptt.len());
     for i in 0..tt.len() {
         register_pos_rec(map, codemap, &tt.get_tt(i), &ptt.get_tt(i));
