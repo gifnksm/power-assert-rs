@@ -21,14 +21,12 @@ mod expand;
 mod convert;
 
 struct Arg {
-    override_builtins: bool
+    override_builtins: bool,
 }
 
 impl Default for Arg {
     fn default() -> Arg {
-        Arg {
-            override_builtins: false
-        }
+        Arg { override_builtins: false }
     }
 }
 

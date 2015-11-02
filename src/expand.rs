@@ -27,9 +27,9 @@ macro_rules! panictry {
 
 fn filter_tts_by_span(span: Span, tts: &[TokenTree]) -> Vec<TokenTree> {
     tts.iter()
-        .filter(|tt| span.lo <= tt.get_span().lo && tt.get_span().hi <= span.hi)
-        .cloned()
-        .collect()
+       .filter(|tt| span.lo <= tt.get_span().lo && tt.get_span().hi <= span.hi)
+       .cloned()
+       .collect()
 }
 
 fn expr_prelude(cx: &ExtCtxt) -> Vec<P<Stmt>> {
@@ -82,7 +82,7 @@ struct ExprGen {
     ident: Ident,
     tts: Vec<TokenTree>,
     expr: P<Expr>,
-    ppstr: String
+    ppstr: String,
 }
 
 impl ExprGen {
@@ -94,18 +94,24 @@ impl ExprGen {
             ident: token::gensym_ident(ident),
             tts: tts,
             expr: expr,
-            ppstr: ppstr
+            ppstr: ppstr,
         }
     }
 
-    fn ppstr(&self) -> &str { &self.ppstr }
-
-    fn init_stmt(&self, cx: &mut ExtCtxt) -> P<Stmt> {
-        let ident = self.ident;
-        quote_stmt!(cx, let mut $ident = vec![];).unwrap()
+    fn ppstr(&self) -> &str {
+        &self.ppstr
     }
 
-    fn converted_expr(&self, cx: &mut ExtCtxt) -> P<Expr> {
+    fn init_stmt(&self, cx: &mut ExtCtxt, pushed: bool) -> P<Stmt> {
+        let ident = self.ident;
+        if pushed {
+            quote_stmt!(cx, let mut $ident = vec![];).unwrap()
+        } else {
+            quote_stmt!(cx, let $ident = vec![];).unwrap()
+        }
+    }
+
+    fn converted_expr(&self, cx: &mut ExtCtxt) -> (P<Expr>, bool) {
         convert::convert_expr(cx, self.expr.clone(), self.ident, &self.tts)
     }
 
@@ -118,8 +124,7 @@ impl ExprGen {
 }
 
 
-pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
-                 -> Box<MacResult + 'static> {
+pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree]) -> Box<MacResult + 'static> {
     let mut parser = cx.new_parser_from_tts(args);
     let cond_expr = parser.parse_expr();
 
@@ -134,9 +139,9 @@ pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     let prelude = expr_prelude(cx);
 
     let gen = ExprGen::new("vals", cond_expr, args);
-    let init = gen.init_stmt(cx);
     let inspect = gen.inspect_expr(cx, "power_assert!(", ")");
-    let converted = gen.converted_expr(cx);
+    let (converted, pushed) = gen.converted_expr(cx);
+    let init = gen.init_stmt(cx, pushed);
 
     let panic_msg = if let Some(tts) = msg_tts {
         quote_expr!(cx, format!($tts))
@@ -161,8 +166,10 @@ pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     MacEager::expr(expr)
 }
 
-pub fn expand_assert_eq(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
-                    -> Box<MacResult + 'static> {
+pub fn expand_assert_eq(cx: &mut ExtCtxt,
+                        _sp: Span,
+                        args: &[TokenTree])
+                        -> Box<MacResult + 'static> {
     let mut parser = cx.new_parser_from_tts(args);
     let lhs = parser.parse_expr();
     panictry!(parser.expect(&token::Token::Comma));
@@ -173,14 +180,13 @@ pub fn expand_assert_eq(cx: &mut ExtCtxt, _sp: Span, args: &[TokenTree])
 
     let prelude = expr_prelude(cx);
 
-    let lhs_init = lhs_gen.init_stmt(cx);
-    let rhs_init = rhs_gen.init_stmt(cx);
     let lhs_inspect = lhs_gen.inspect_expr(cx, "left: ", "");
     let rhs_inspect = rhs_gen.inspect_expr(cx, "right: ", "");
-    let lhs_converted = lhs_gen.converted_expr(cx);
-    let rhs_converted = rhs_gen.converted_expr(cx);
-    let assert_msg = format!("power_assert_eq!({}, {})",
-                             lhs_gen.ppstr(), rhs_gen.ppstr());
+    let (lhs_converted, lhs_pushed) = lhs_gen.converted_expr(cx);
+    let (rhs_converted, rhs_pushed) = rhs_gen.converted_expr(cx);
+    let lhs_init = lhs_gen.init_stmt(cx, lhs_pushed);
+    let rhs_init = rhs_gen.init_stmt(cx, rhs_pushed);
+    let assert_msg = format!("power_assert_eq!({}, {})", lhs_gen.ppstr(), rhs_gen.ppstr());
 
     let expr = quote_expr!(cx, {
         $lhs_init;

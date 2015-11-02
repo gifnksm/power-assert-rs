@@ -60,3 +60,21 @@ right: bar.foo.val
        Bar { val: 3, foo: Foo { val: 2 } }
 ");
 }
+
+#[test]
+fn issue4() {
+    fn check(_: &str) -> Result<(), ()> {
+        Ok(())
+    }
+
+    let s = "hello".to_owned();
+
+    assert!(check(&s) == Ok(()));
+    // power_assert!(check(&s) == Ok(())); // FIXME(#4)
+}
+
+#[test]
+fn issue5() {
+    assert_eq!(2*2, 4);
+    power_assert_eq!(2*2, 4);
+}
