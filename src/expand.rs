@@ -126,7 +126,7 @@ impl ExprGen {
 
 pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree]) -> Box<MacResult + 'static> {
     let mut parser = cx.new_parser_from_tts(args);
-    let cond_expr = parser.parse_expr();
+    let cond_expr = parser.parse_expr_panic();
 
     let msg_tts = if panictry!(parser.eat(&token::Token::Comma)) {
         let mut span = sp.clone();
@@ -171,9 +171,9 @@ pub fn expand_assert_eq(cx: &mut ExtCtxt,
                         args: &[TokenTree])
                         -> Box<MacResult + 'static> {
     let mut parser = cx.new_parser_from_tts(args);
-    let lhs = parser.parse_expr();
+    let lhs = parser.parse_expr_panic();
     panictry!(parser.expect(&token::Token::Comma));
-    let rhs = parser.parse_expr();
+    let rhs = parser.parse_expr_panic();
 
     let lhs_gen = ExprGen::new("lhs_vals", lhs, args);
     let rhs_gen = ExprGen::new("rhs_vals", rhs, args);
