@@ -12,10 +12,10 @@
 #![feature(quote)]
 
 extern crate syntax;
-extern crate rustc;
+extern crate rustc_plugin;
 
 use syntax::ast::MetaWord;
-use rustc::plugin::Registry;
+use rustc_plugin::Registry;
 
 mod expand;
 mod convert;
