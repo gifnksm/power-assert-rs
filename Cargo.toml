@@ -1,6 +1,6 @@
 [package]
 name = "power-assert"
-version = "0.3.5"
+version = "0.3.6"
 authors = ["gifnksm <makoto.nksm+github@gmail.com>"]
 license = "MIT"
 readme = "README.md"
