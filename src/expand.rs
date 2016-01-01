@@ -20,7 +20,10 @@ macro_rules! panictry {
         use syntax::errors::FatalError;
         match $e {
             Ok(e) => e,
-            Err(FatalError) => panic!(FatalError)
+            Err(mut e) => {
+                e.emit();
+                panic!(FatalError);
+            }
         }
     })
 }
