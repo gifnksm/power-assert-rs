@@ -131,7 +131,7 @@ pub fn expand_assert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree]) -> Box<MacR
     let mut parser = cx.new_parser_from_tts(args);
     let cond_expr = panictry!(parser.parse_expr());
 
-    let msg_tts = if panictry!(parser.eat(&token::Token::Comma)) {
+    let msg_tts = if parser.eat(&token::Token::Comma) {
         let mut span = sp.clone();
         span.lo = parser.span.lo;
         Some(filter_tts_by_span(span, args))
