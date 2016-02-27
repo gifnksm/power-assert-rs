@@ -14,7 +14,7 @@
 extern crate syntax;
 extern crate rustc_plugin;
 
-use syntax::ast::MetaWord;
+use syntax::ast::MetaItemKind;
 use rustc_plugin::Registry;
 
 mod expand;
@@ -36,7 +36,7 @@ impl Arg {
 
         for arg in reg.args() {
             match arg.node {
-                MetaWord(ref ns) => {
+                MetaItemKind::Word(ref ns) => {
                     match &**ns {
                         "override_builtins" => {
                             result.override_builtins = true;

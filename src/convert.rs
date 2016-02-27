@@ -60,16 +60,16 @@ impl<'cx> Folder for AssertFolder<'cx> {
         expr.and_then(|expr| {
             use syntax::ast::*;
             match expr.node {
-                // ExprBox
-                // ExprVec
-                ExprCall(ref i, ref args) => {
+                // ExprKind::Box
+                // ExprKind::Vec
+                ExprKind::Call(ref i, ref args) => {
                     let col = self.pos_map.get(&i.span.lo).unwrap();
                     let args = args.iter()
                                    .map(|expr| self.fold_expr(expr.clone()))
                                    .collect::<Vec<_>>();
                     let ident = self.ident;
                     let mut call_expr = expr.clone();
-                    call_expr.node = ExprCall(i.clone(), args);
+                    call_expr.node = ExprKind::Call(i.clone(), args);
 
                     let call_expr = P(call_expr);
                     self.push_count += 1;
@@ -79,7 +79,7 @@ impl<'cx> Folder for AssertFolder<'cx> {
                         expr
                     })
                 }
-                ExprMethodCall(i, _, _) => {
+                ExprKind::MethodCall(i, _, _) => {
                     // TODO: fix column
                     let col = self.pos_map.get(&i.span.lo).unwrap();
                     let conv_expr = P(fold::noop_fold_expr(expr, self));
@@ -91,8 +91,8 @@ impl<'cx> Folder for AssertFolder<'cx> {
                         expr
                     })
                 }
-                // ExprTup
-                ExprBinary(op, _, _) => {
+                // ExprKind::Tup
+                ExprKind::Binary(op, _, _) => {
                     let col = self.pos_map.get(&op.span.lo).unwrap();
                     let conv_expr = P(fold::noop_fold_expr(expr, self));
                     let ident = self.ident;
@@ -103,12 +103,12 @@ impl<'cx> Folder for AssertFolder<'cx> {
                         expr
                     })
                 }
-                // ExprUnary
-                // ExprLit
-                // ExprCast
-                ExprIf(..) |
-                ExprIfLet(..) |
-                ExprMatch(..) => {
+                // ExprKind::Unary
+                // ExprKind::Lit
+                // ExprKind::Cast
+                ExprKind::If(..) |
+                ExprKind::IfLet(..) |
+                ExprKind::Match(..) => {
                     let col = self.pos_map.get(&expr.span.lo).unwrap();
                     let conv_expr = P(fold::noop_fold_expr(expr, self));
                     let ident = self.ident;
@@ -119,22 +119,18 @@ impl<'cx> Folder for AssertFolder<'cx> {
                         expr
                     })
                 }
-                // ExprWhile
-                // ExprWhileLet
-                // ExprForLoop
-                // ExprLoop
-                // ExprMatch: See above
-                // ExprClosure
-                // ExprBlock
-                // ExprAssign
-                // ExprAssignOp
-                ExprField(..) => {
-                    self.convert_field(P(expr.clone()))
-                }
-                ExprTupField(..) => {
-                    self.convert_field(P(expr.clone()))
-                }
-                ExprIndex(_, ref i) => {
+                // ExprKind::While
+                // ExprKind::WhileLet
+                // ExprKind::ForLoop
+                // ExprKind::Loop
+                // ExprKind::Match: See above
+                // ExprKind::Closure
+                // ExprKind::Block
+                // ExprKind::Assign
+                // ExprKind::AssignOp
+                ExprKind::Field(..) => self.convert_field(P(expr.clone())),
+                ExprKind::TupField(..) => self.convert_field(P(expr.clone())),
+                ExprKind::Index(_, ref i) => {
                     // TODO: Fix column
                     let col = self.pos_map.get(&i.span.lo).unwrap();
                     let conv_expr = P(fold::noop_fold_expr(expr.clone(), self));
@@ -146,8 +142,8 @@ impl<'cx> Folder for AssertFolder<'cx> {
                         expr
                     })
                 }
-                // ExprRange
-                ExprPath(..) => {
+                // ExprKind::Range
+                ExprKind::Path(..) => {
                     let col = self.pos_map.get(&expr.span.lo).unwrap();
                     let expr = P(expr);
                     let ident = self.ident;
@@ -157,15 +153,15 @@ impl<'cx> Folder for AssertFolder<'cx> {
                         $expr
                     })
                 }
-                // ExprAddrOf
-                // ExprBreak
-                // ExprAgain
-                // ExprRet
-                // ExprInlineAsm
-                // ExprMac
-                // ExprStruct
-                // ExprRepeat
-                // ExprParen
+                // ExprKind::AddrOf
+                // ExprKind::Break
+                // ExprKind::Again
+                // ExprKind::Ret
+                // ExprKind::InlineAsm
+                // ExprKind::Mac
+                // ExprKind::Struct
+                // ExprKind::Repeat
+                // ExprKind::Paren
                 _ => P(fold::noop_fold_expr(expr, self)),
             }
         })
@@ -181,11 +177,11 @@ impl<'cx> AssertFolder<'cx> {
         let ident;
         loop {
             cur_expr = match cur_expr.node {
-                ExprField(ref e, _) | ExprTupField(ref e, _) => {
+                ExprKind::Field(ref e, _) | ExprKind::TupField(ref e, _) => {
                     exprs.push(cur_expr.clone());
                     e.clone()
                 }
-                ExprPath(..) => {
+                ExprKind::Path(..) => {
                     ident = cur_expr.clone();
                     let id = self.ident;
                     let col = self.pos_map.get(&expr.span.lo).unwrap();
@@ -207,12 +203,12 @@ impl<'cx> AssertFolder<'cx> {
                          .scan(ident, |st, item| {
                              let mut item = (*item).clone();
                              let col = match item.node {
-                                 ExprField(_, i) => {
-                                     item.node = ExprField(st.clone(), i);
+                                 ExprKind::Field(_, i) => {
+                                     item.node = ExprKind::Field(st.clone(), i);
                                      self.pos_map.get(&i.span.lo).unwrap()
                                  }
-                                 ExprTupField(_, i) => {
-                                     item.node = ExprTupField(st.clone(), i);
+                                 ExprKind::TupField(_, i) => {
+                                     item.node = ExprKind::TupField(st.clone(), i);
                                      self.pos_map.get(&i.span.lo).unwrap()
                                  }
                                  _ => panic!(),
