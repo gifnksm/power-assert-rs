@@ -35,7 +35,7 @@ fn filter_tts_by_span(span: Span, tts: &[TokenTree]) -> Vec<TokenTree> {
        .collect()
 }
 
-fn expr_prelude(cx: &ExtCtxt) -> Vec<P<Stmt>> {
+fn expr_prelude(cx: &ExtCtxt) -> Vec<Stmt> {
     let use_stmt = quote_stmt!(cx, use std::io::Write;);
     let fn_stmt = quote_stmt!(
         cx,
@@ -108,9 +108,9 @@ impl ExprGen {
     fn init_stmt(&self, cx: &mut ExtCtxt, pushed: bool) -> P<Stmt> {
         let ident = self.ident;
         if pushed {
-            quote_stmt!(cx, let mut $ident = vec![];).unwrap()
+            P(quote_stmt!(cx, let mut $ident = vec![];).unwrap())
         } else {
-            quote_stmt!(cx, let $ident = vec![];).unwrap()
+            P(quote_stmt!(cx, let $ident = vec![];).unwrap())
         }
     }
 
