@@ -70,7 +70,7 @@ fn issue4() {
     let s = "hello".to_owned();
 
     assert!(check(&s) == Ok(()));
-    // power_assert!(check(&s) == Ok(())); // FIXME(#4)
+    power_assert!(check(&s) == Ok(()));
 }
 
 #[test]
