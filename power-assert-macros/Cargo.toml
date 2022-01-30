@@ -1,5 +1,5 @@
 [package]
-name = "power-assert"
+name = "power-assert-macros"
 version = "0.3.9"
 authors = ["gifnksm <makoto.nksm+github@gmail.com>"]
 license = "MIT"
@@ -9,11 +9,11 @@ description = "Power Assert in Rust. Provides better assertion message."
 edition = "2021"
 
 [lib]
-name = "power_assert"
+name = "power_assert_macros"
 path = "src/lib.rs"
+proc-macro = true
 
 [dependencies]
-power-assert-macros = {path = "power-assert-macros"}
-
-[workspace]
-members = ["power-assert-macros"]
+syn = {version = "1.0", features=["full", "fold"]}
+quote = "1.0"
+proc-macro2 = {version = "1.0", features=["span-locations"]}
